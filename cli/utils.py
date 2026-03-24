@@ -4,6 +4,8 @@ from typing import List, Optional, Tuple, Dict
 from rich.console import Console
 
 from cli.models import AnalystType
+from cli.provider_discovery import fetch_shengsuanyun_models
+from tradingagents.default_config import DEFAULT_CONFIG
 
 console = Console()
 
@@ -14,6 +16,13 @@ ANALYST_ORDER = [
     ("Social Media Analyst", AnalystType.SOCIAL),
     ("News Analyst", AnalystType.NEWS),
     ("Fundamentals Analyst", AnalystType.FUNDAMENTALS),
+]
+
+
+SHENGSUANYUN_MODEL_EXAMPLES = [
+    "deepseek/deepseek-v3",
+    "anthropic/claude-sonnet-4-5",
+    "openai/gpt-4.1",
 ]
 
 
@@ -135,6 +144,13 @@ def select_research_depth() -> int:
 
 def select_shallow_thinking_agent(provider) -> str:
     """Select shallow thinking llm engine using an interactive selection."""
+    provider_lower = provider.lower()
+
+    if provider_lower == "shengsuanyun":
+        return select_shengsuanyun_model(
+            "Quick-Thinking LLM Engine",
+            "deepseek/deepseek-v3",
+        )
 
     # Define shallow thinking llm engine options with their corresponding model names
     # Ordering: medium → light → heavy (balanced first for quick tasks)
@@ -177,7 +193,7 @@ def select_shallow_thinking_agent(provider) -> str:
         "Select Your [Quick-Thinking LLM Engine]:",
         choices=[
             questionary.Choice(display, value=value)
-            for display, value in SHALLOW_AGENT_OPTIONS[provider.lower()]
+            for display, value in SHALLOW_AGENT_OPTIONS[provider_lower]
         ],
         instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
         style=questionary.Style(
@@ -200,6 +216,13 @@ def select_shallow_thinking_agent(provider) -> str:
 
 def select_deep_thinking_agent(provider) -> str:
     """Select deep thinking llm engine using an interactive selection."""
+    provider_lower = provider.lower()
+
+    if provider_lower == "shengsuanyun":
+        return select_shengsuanyun_model(
+            "Deep-Thinking LLM Engine",
+            "anthropic/claude-sonnet-4-5",
+        )
 
     # Define deep thinking llm engine options with their corresponding model names
     # Ordering: heavy → medium → light (most capable first for deep tasks)
@@ -244,7 +267,7 @@ def select_deep_thinking_agent(provider) -> str:
         "Select Your [Deep-Thinking LLM Engine]:",
         choices=[
             questionary.Choice(display, value=value)
-            for display, value in DEEP_AGENT_OPTIONS[provider.lower()]
+            for display, value in DEEP_AGENT_OPTIONS[provider_lower]
         ],
         instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
         style=questionary.Style(
@@ -262,15 +285,73 @@ def select_deep_thinking_agent(provider) -> str:
 
     return choice
 
+
+def prompt_manual_model_name(label: str, default_model: str) -> str:
+    """Prompt for a model id when dynamic discovery is unavailable."""
+    prompt = (
+        f"Enter your [{label}] model id "
+        f"(for example: {', '.join(SHENGSUANYUN_MODEL_EXAMPLES)}):"
+    )
+    model_name = questionary.text(
+        prompt,
+        default=default_model,
+        validate=lambda x: len(x.strip()) > 0 or "Please enter a valid model id.",
+        style=questionary.Style(
+            [
+                ("text", "fg:magenta"),
+                ("highlighted", "noinherit"),
+            ]
+        ),
+    ).ask()
+
+    if not model_name:
+        console.print(f"\n[red]No {label.lower()} model selected. Exiting...[/red]")
+        exit(1)
+
+    return model_name.strip()
+
+
+def select_shengsuanyun_model(label: str, default_model: str) -> str:
+    """Select a Shengsuanyun model via dynamic discovery, falling back to manual input."""
+    models, error = fetch_shengsuanyun_models(
+        DEFAULT_CONFIG["shengsuanyun_models_url"]
+    )
+
+    if not models:
+        if error:
+            console.print(f"[yellow]{error} Falling back to manual model input.[/yellow]")
+        return prompt_manual_model_name(label, default_model)
+
+    choices = [questionary.Choice(model_id, value=model_id) for model_id in models]
+    choice = questionary.select(
+        f"Select Your [{label}] ({len(models)} models discovered):",
+        choices=choices,
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style(
+            [
+                ("selected", "fg:magenta noinherit"),
+                ("highlighted", "fg:magenta noinherit"),
+                ("pointer", "fg:magenta noinherit"),
+            ]
+        ),
+    ).ask()
+
+    if choice is None:
+        console.print(f"\n[red]No {label.lower()} selected. Exiting...[/red]")
+        exit(1)
+
+    return choice
+
 def select_llm_provider() -> tuple[str, str]:
-    """Select the OpenAI api url using interactive selection."""
-    # Define OpenAI api options with their corresponding endpoints
+    """Select the LLM provider and base URL using interactive selection."""
+    # Define provider options with their corresponding endpoints
     BASE_URLS = [
         ("OpenAI", "https://api.openai.com/v1"),
         ("Google", "https://generativelanguage.googleapis.com/v1"),
         ("Anthropic", "https://api.anthropic.com/"),
         ("xAI", "https://api.x.ai/v1"),
         ("Openrouter", "https://openrouter.ai/api/v1"),
+        ("Shengsuanyun", "https://router.shengsuanyun.com/api/v1"),
         ("Ollama", "http://localhost:11434/v1"),
     ]
     
@@ -291,7 +372,7 @@ def select_llm_provider() -> tuple[str, str]:
     ).ask()
     
     if choice is None:
-        console.print("\n[red]no OpenAI backend selected. Exiting...[/red]")
+        console.print("\n[red]No LLM provider selected. Exiting...[/red]")
         exit(1)
     
     display_name, url = choice

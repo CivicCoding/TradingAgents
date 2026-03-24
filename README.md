@@ -127,6 +127,7 @@ export GOOGLE_API_KEY=...          # Google (Gemini)
 export ANTHROPIC_API_KEY=...       # Anthropic (Claude)
 export XAI_API_KEY=...             # xAI (Grok)
 export OPENROUTER_API_KEY=...      # OpenRouter
+export SHENGSUANYUN_API_KEY=...    # Shengsuanyun Router
 export ALPHA_VANTAGE_API_KEY=...   # Alpha Vantage
 ```
 
@@ -136,6 +137,49 @@ Alternatively, copy `.env.example` to `.env` and fill in your keys:
 ```bash
 cp .env.example .env
 ```
+
+### Shengsuanyun Support
+
+TradingAgents also supports Shengsuanyun as an OpenAI-compatible routed provider.
+
+```bash
+export SHENGSUANYUN_API_KEY=...
+```
+
+In the CLI, select `Shengsuanyun` as the provider. The CLI will first try to load the model catalog from:
+
+```text
+https://router.shengsuanyun.com/api/v1/models
+```
+
+If model discovery succeeds, you can choose both quick and deep models from a dynamic list. If it fails, the CLI automatically falls back to manual model-id input.
+
+You can also configure it in Python:
+
+```python
+from tradingagents.graph.trading_graph import TradingAgentsGraph
+from tradingagents.default_config import DEFAULT_CONFIG
+
+config = DEFAULT_CONFIG.copy()
+config["llm_provider"] = "shengsuanyun"
+config["backend_url"] = "https://router.shengsuanyun.com/api/v1"
+config["quick_think_llm"] = "deepseek/deepseek-v3"
+config["deep_think_llm"] = "anthropic/claude-sonnet-4-5"
+
+# Optional router settings
+config["shengsuanyun_supplier"] = "deepseek"
+config["shengsuanyun_auto_route"] = True
+config["shengsuanyun_extra_headers"] = {
+    "HTTP-Referer": "https://your-app.example",
+    "X-Title": "TradingAgents",
+}
+
+ta = TradingAgentsGraph(debug=True, config=config)
+_, decision = ta.propagate("NVDA", "2026-01-15")
+print(decision)
+```
+
+See [docs/providers/shengsuanyun.md](docs/providers/shengsuanyun.md) for details.
 
 ### CLI Usage
 
@@ -164,7 +208,7 @@ An interface will appear showing results as they load, letting you track the age
 
 ### Implementation Details
 
-We built TradingAgents with LangGraph to ensure flexibility and modularity. The framework supports multiple LLM providers: OpenAI, Google, Anthropic, xAI, OpenRouter, and Ollama.
+We built TradingAgents with LangGraph to ensure flexibility and modularity. The framework supports multiple LLM providers: OpenAI, Google, Anthropic, xAI, OpenRouter, Shengsuanyun, and Ollama.
 
 ### Python Usage
 
@@ -188,7 +232,7 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
 config = DEFAULT_CONFIG.copy()
-config["llm_provider"] = "openai"        # openai, google, anthropic, xai, openrouter, ollama
+config["llm_provider"] = "openai"        # openai, google, anthropic, xai, openrouter, shengsuanyun, ollama
 config["deep_think_llm"] = "gpt-5.2"     # Model for complex reasoning
 config["quick_think_llm"] = "gpt-5-mini" # Model for quick tasks
 config["max_debate_rounds"] = 2

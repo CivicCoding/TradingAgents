@@ -28,6 +28,24 @@ def build_instrument_context(ticker: str) -> str:
         "preserving any exchange suffix (e.g. `.TO`, `.L`, `.HK`, `.T`)."
     )
 
+
+def build_chinese_output_instruction(extra_requirements: str = "") -> str:
+    """Return a shared instruction for Chinese-language model output.
+
+    Keeps internal control tokens in English so existing graph logic still works.
+    """
+    base_instruction = (
+        "Write all natural-language analysis, explanations, and report content in Simplified Chinese. "
+        "Keep stock tickers, tool names, and exact technical indicator names unchanged. "
+        "If you must output a formal rating or control token required by the workflow, keep that rating token in English exactly as requested. "
+        "Do not switch back to English for normal narrative text."
+    )
+
+    if extra_requirements:
+        return f"{base_instruction} {extra_requirements}"
+
+    return base_instruction
+
 def create_msg_delete():
     def delete_messages(state):
         """Clear messages and add placeholder for Anthropic compatibility"""

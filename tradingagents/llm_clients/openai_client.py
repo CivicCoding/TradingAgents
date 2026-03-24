@@ -1,9 +1,9 @@
-import os
 from typing import Any, Optional
 
 from langchain_openai import ChatOpenAI
 
 from .base_client import BaseLLMClient, normalize_content
+from .provider_settings import get_provider_setting, resolve_provider_api_key
 from .validators import validate_model
 
 
@@ -22,23 +22,17 @@ class NormalizedChatOpenAI(ChatOpenAI):
 _PASSTHROUGH_KWARGS = (
     "timeout", "max_retries", "reasoning_effort",
     "api_key", "callbacks", "http_client", "http_async_client",
+    "default_headers", "extra_body",
 )
-
-# Provider base URLs and API key env vars
-_PROVIDER_CONFIG = {
-    "xai": ("https://api.x.ai/v1", "XAI_API_KEY"),
-    "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
-    "ollama": ("http://localhost:11434/v1", None),
-}
 
 
 class OpenAIClient(BaseLLMClient):
-    """Client for OpenAI, Ollama, OpenRouter, and xAI providers.
+    """Client for OpenAI-compatible providers.
 
     For native OpenAI models, uses the Responses API (/v1/responses) which
     supports reasoning_effort with function tools across all model families
     (GPT-4.1, GPT-5). Third-party compatible providers (xAI, OpenRouter,
-    Ollama) use standard Chat Completions.
+    Ollama, Shengsuanyun) use standard Chat Completions.
     """
 
     def __init__(
@@ -56,15 +50,18 @@ class OpenAIClient(BaseLLMClient):
         llm_kwargs = {"model": self.model}
 
         # Provider-specific base URL and auth
-        if self.provider in _PROVIDER_CONFIG:
-            base_url, api_key_env = _PROVIDER_CONFIG[self.provider]
-            llm_kwargs["base_url"] = base_url
-            if api_key_env:
-                api_key = os.environ.get(api_key_env)
+        provider_base_url = get_provider_setting(self.provider, "base_url")
+        if provider_base_url:
+            llm_kwargs["base_url"] = provider_base_url
+            if self.provider == "ollama":
+                llm_kwargs["api_key"] = "ollama"
+            else:
+                api_key = resolve_provider_api_key(
+                    self.provider,
+                    explicit_api_key=self.kwargs.get("api_key"),
+                )
                 if api_key:
                     llm_kwargs["api_key"] = api_key
-            else:
-                llm_kwargs["api_key"] = "ollama"
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
 

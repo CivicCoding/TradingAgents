@@ -1,7 +1,10 @@
 import time
 import json
 
-from tradingagents.agents.utils.agent_utils import build_instrument_context
+from tradingagents.agents.utils.agent_utils import (
+    build_chinese_output_instruction,
+    build_instrument_context,
+)
 
 
 def create_research_manager(llm, memory):
@@ -40,7 +43,9 @@ Here are your past reflections on mistakes:
 
 Here is the debate:
 Debate History:
-{history}"""
+{history}
+
+{build_chinese_output_instruction("If you mention the recommendation label explicitly, you may keep Buy, Sell, or Hold in English, but explain everything else in Chinese.")}"""
         response = llm.invoke(prompt)
 
         new_investment_debate_state = {

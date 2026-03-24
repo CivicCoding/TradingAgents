@@ -2,6 +2,8 @@ from langchain_core.messages import AIMessage
 import time
 import json
 
+from tradingagents.agents.utils.agent_utils import build_chinese_output_instruction
+
 
 def create_bull_researcher(llm, memory):
     def bull_node(state) -> dict:
@@ -40,6 +42,7 @@ Conversation history of the debate: {history}
 Last bear argument: {current_response}
 Reflections from similar situations and lessons learned: {past_memory_str}
 Use this information to deliver a compelling bull argument, refute the bear's concerns, and engage in a dynamic debate that demonstrates the strengths of the bull position. You must also address reflections and learn from lessons and mistakes you made in the past.
+{build_chinese_output_instruction("Keep the speaker prefix logic untouched outside the main body content.")}
 """
 
         response = llm.invoke(prompt)

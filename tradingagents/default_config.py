@@ -16,6 +16,10 @@ DEFAULT_CONFIG = {
     "google_thinking_level": None,      # "high", "minimal", etc.
     "openai_reasoning_effort": None,    # "medium", "high", "low"
     "anthropic_effort": None,           # "high", "medium", "low"
+    "shengsuanyun_supplier": None,
+    "shengsuanyun_auto_route": None,
+    "shengsuanyun_extra_headers": None,
+    "shengsuanyun_models_url": "https://router.shengsuanyun.com/api/v1/models",
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
